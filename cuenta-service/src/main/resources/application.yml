@@ -8,6 +8,21 @@ spring:
   config:
     import: optional:configserver:http://localhost:8888
 
+  # JMS - HABILITAR TOPIC (Publish/Subscribe)
+  jms:
+    pub-sub-domain: true
+
+  # JMS / ActiveMQ
+  activemq:
+    broker-url: tcp://localhost:61616
+    user: admin
+    password: admin
+    packages:
+      trust-all: true
+    pool:
+      enabled: true
+      max-connections: 10
+
   # H2 Database
   datasource:
     url: jdbc:h2:mem:cuenta_db
@@ -19,7 +34,6 @@ spring:
       minimum-idle: 2
       connection-timeout: 30000
 
-  # JPA
   jpa:
     hibernate:
       ddl-auto: create-drop
@@ -28,13 +42,11 @@ spring:
       hibernate:
         format_sql: true
 
-  # H2 Console
   h2:
     console:
       enabled: true
       path: /h2-console
 
-# Eureka Client
 eureka:
   client:
     service-url:
@@ -42,19 +54,17 @@ eureka:
   instance:
     prefer-ip-address: true
 
-# Actuator
 management:
   endpoints:
     web:
       exposure:
         include: health,info,circuitbreakers
 
-# JWT Configuration
 jwt:
   secret: banco-xyz-clave-super-secreta-para-firmar-tokens-jwt-2026
   expiration: 36000000
 
-# Logging
 logging:
   level:
     com.bancoxyz: DEBUG
+    org.apache.activemq: INFO
