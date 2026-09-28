@@ -30,7 +30,7 @@ public class ReporteConCuentaService {
      */
     @CircuitBreaker(name = "cuentaService", fallbackMethod = "fallbackObtenerReportesConCuenta")
     public ReporteConCuentaDTO obtenerReportesConCuenta(String cuentaId) {
-        log.info("🔍 Consultando reportes y cuenta para: {}", cuentaId);
+        log.info("Consultando reportes y cuenta para: {}", cuentaId);
 
         List<ReporteDTO> reportes = reporteService.obtenerPorCuenta(cuentaId);
 
@@ -40,7 +40,7 @@ public class ReporteConCuentaService {
                 Map.class
         );
 
-        log.info("✅ Datos obtenidos correctamente para cuenta: {}", cuentaId);
+        log.info("Datos obtenidos correctamente para cuenta: {}", cuentaId);
 
         ReporteConCuentaDTO response = new ReporteConCuentaDTO();
         response.setCuentaId(cuentaId);
@@ -55,7 +55,7 @@ public class ReporteConCuentaService {
      * Fallback cuando el Circuit Breaker está abierto o hay error.
      */
     public ReporteConCuentaDTO fallbackObtenerReportesConCuenta(String cuentaId, Throwable t) {
-        log.warn("⚠️ Fallback activado para cuenta: {}. Error: {}", cuentaId, t.getMessage());
+        log.warn("Fallback activado para cuenta: {}. Error: {}", cuentaId, t.getMessage());
 
         List<ReporteDTO> reportes = reporteService.obtenerPorCuenta(cuentaId);
 

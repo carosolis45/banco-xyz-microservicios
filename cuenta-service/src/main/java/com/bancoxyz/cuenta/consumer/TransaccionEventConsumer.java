@@ -64,7 +64,7 @@ public class TransaccionEventConsumer {
         cuenta.setSaldo(saldoNuevo);
         cuentaRepository.save(cuenta);
 
-        log.info("✅ Saldo actualizado:");
+        log.info(" Saldo actualizado:");
         log.info("   Cuenta: {}", cuenta.getCuentaId());
         log.info("   Saldo anterior: {}", saldoAnterior);
         log.info("   Saldo nuevo: {}", saldoNuevo);
