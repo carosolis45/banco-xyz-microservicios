@@ -1,16 +1,18 @@
 server:
-  port: 8082
+  port: 8083
 
 spring:
   application:
-    name: transaccion-service
+    name: reporte-service
 
   config:
-    import: optional:configserver:http://localhost:8888
+    import: optional:configserver:http://config-server:8888
 
-  # JMS / ActiveMQ
+  jms:
+    pub-sub-domain: true
+
   activemq:
-    broker-url: tcp://localhost:61616
+    broker-url: tcp://host.docker.internal:61616
     user: admin
     password: admin
     packages:
@@ -19,9 +21,8 @@ spring:
       enabled: true
       max-connections: 10
 
-  # H2 Database
   datasource:
-    url: jdbc:h2:mem:transaccion_db
+    url: jdbc:h2:mem:reporte_db
     driver-class-name: org.h2.Driver
     username: sa
     password:
@@ -46,21 +47,40 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://eureka-server:8761/eureka/
   instance:
     prefer-ip-address: true
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      cuentaService:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+
+  timelimiter:
+    instances:
+      cuentaService:
+        timeoutDuration: 3s
+        cancelRunningFuture: true
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,circuitbreakers
-
-jwt:
-  secret: banco-xyz-clave-super-secreta-para-firmar-tokens-jwt-2026
-  expiration: 36000000
+        include: health,info,circuitbreakers,circuitbreakerevents
+  health:
+    circuitbreakers:
+      enabled: true
 
 logging:
   level:
     com.bancoxyz: DEBUG
     org.apache.activemq: INFO
+    io.github.resilience4j: DEBUG

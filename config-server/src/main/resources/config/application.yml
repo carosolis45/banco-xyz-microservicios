@@ -1,5 +1,13 @@
 # Configuracion compartida para todos los microservicios
 spring:
+  # OAuth2 Resource Server (valida tokens de Keycloak)
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://host.docker.internal:9000/realms/banco-xyz
+          jwk-set-uri: http://host.docker.internal:9000/realms/banco-xyz/protocol/openid-connect/certs
+
   jpa:
     show-sql: true
     hibernate:
@@ -11,7 +19,7 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://eureka-server:8761/eureka/
   instance:
     prefer-ip-address: true
 

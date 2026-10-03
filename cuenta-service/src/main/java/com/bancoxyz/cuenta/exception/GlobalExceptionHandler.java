@@ -2,6 +2,8 @@ package com.bancoxyz.cuenta.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -41,6 +43,33 @@ public class GlobalExceptionHandler {
         respuesta.put("path", request.getDescription(false).replace("uri=", ""));
 
         return new ResponseEntity<>(respuesta, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Maneja AccessDeniedException (403 Forbidden) — cuando el usuario
+     * está autenticado pero no tiene el rol necesario.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(
+            AccessDeniedException ex, WebRequest request) {
+        return construirRespuesta(
+                HttpStatus.FORBIDDEN,
+                "Acceso denegado: no tienes permisos para acceder a este recurso",
+                request
+        );
+    }
+
+    /**
+     * Maneja AuthenticationException (401 Unauthorized).
+     */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<Map<String, Object>> handleAuthenticationException(
+            AuthenticationException ex, WebRequest request) {
+        return construirRespuesta(
+                HttpStatus.UNAUTHORIZED,
+                "No autenticado: " + ex.getMessage(),
+                request
+        );
     }
 
     @ExceptionHandler(Exception.class)

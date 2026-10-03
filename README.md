@@ -1,324 +1,373 @@
-# Banco XYZ - Arquitectura de Microservicios con Spring Cloud
+# Banco XYZ - Microservicios con Spring Cloud
 
-## Descripción del Proyecto
+Proyecto de arquitectura de microservicios para el Banco XYZ, implementando patrones de **Spring Cloud**, **OAuth2.0 con Keycloak**, **Docker**, **mensajería asíncrona con JMS** y **tolerancia a fallos con Resilience4j**.
 
-Sistema de microservicios distribuidos para el Banco XYZ, implementando **Spring Cloud** con:
-- **Config Server** centralizado
-- **Eureka Service Discovery**
-- **3 microservicios independientes** con autenticación JWT
-- **Circuit Breaker** para tolerancia a fallos
-- **Arquitectura de Eventos con JMS (ActiveMQ)**
-- **Seguridad con Spring Security + JWT**
+---
 
-## Objetivo
+## Tabla de Contenidos
 
-- Configurar un servidor centralizado de configuración
-- Habilitar Service Discovery para registrar microservicios
-- Implementar microservicios con tolerancia a fallos y autenticación
-- Implementar una arquitectura asíncrona de eventos con JMS
-- Asegurar la comunicación entre servicios distribuidos
+- [Descripción](#-descripción)
+- [Arquitectura](#-arquitectura)
+- [Tecnologías](#-tecnologías)
+- [Estructura del Proyecto](#-estructura-del-proyecto)
+- [Prerequisitos](#-prerequisitos)
+- [Instalación y Ejecución](#-instalación-y-ejecución)
+- [Configuración de OAuth2 con Keycloak](#-configuración-de-oauth2-con-keycloak)
+- [API Endpoints](#-api-endpoints)
+- [Pruebas de Seguridad](#-pruebas-de-seguridad)
+- [Tolerancia a Fallos (Resilience4j)](#-tolerancia-a-fallos-resilience4j)
+- [Mensajería Asíncrona (JMS)](#-mensajería-asíncrona-jms)
+- [Evidencias de Ejecución](#-evidencias-de-ejecución)
+- [Autor](#-autor)
 
-## Arquitectura
+---
 
-```text
-                    ┌────────────────────────┐
-                    │  CONFIG SERVER :8888   │
-                    │  (Configuración)       │
-                    └───────────┬────────────┘
-                                │
-                    ┌───────────▼────────────┐
-                    │  EUREKA SERVER :8761   │
-                    │  (Service Discovery)   │
-                    └───────────┬────────────┘
-                                │
-        ┌───────────────────────┼───────────────────────┐
-        │                       │                       │
-        ▼                       ▼                       ▼
-┌───────────────┐     ┌───────────────┐     ┌───────────────┐
-│  CUENTA       │     │  TRANSACCION  │     │  REPORTE      │
-│  :8081        │     │  :8082        │     │  :8083        │
-│  • JWT        │     │  • JWT        │     │  • JWT        │
-│  • JPA + H2   │     │  • JPA + H2   │     │  • JPA + H2   │
-│  • Circuit    │     │  • JMS        │     │  • Circuit    │
-│    Breaker    │     │  (Productor)  │     │    Breaker    │
-│  • JMS        │     │               │     │  • JMS        │
-│  (Consumidor) │     │               │     │  (Consumidor) │
-└───────────────┘     └───────────────┘     └───────────────┘
-        │                       │                       ▲
-        │                       │                       │
-        └───────────────────────┴───────────────────────┘
-                                ▼
-                    ┌────────────────────────┐
-                    │   ACTIVEMQ (Docker)    │
-                    │   • JMS:     :61616    │
-                    │   • Console: :8161     │
-                    └────────────────────────┘
+## Descripción
+
+El proyecto **Banco XYZ** implementa una arquitectura de microservicios distribuida que permite gestionar cuentas, transacciones y reportes bancarios. Incorpora:
+
+- **OAuth2.0** con Keycloak como Authorization Server
+- **Spring Cloud Config** para configuración centralizada
+- **Spring Cloud Netflix Eureka** para descubrimiento de servicios
+- **Resilience4j** para tolerancia a fallos (Circuit Breaker)
+- **JMS con ActiveMQ** para comunicación asíncrona
+- **Docker + Docker Compose** para despliegue en contenedores
+
+---
+
+## 🏗️ Arquitectura
+
 ```
+┌─────────────────────────────────────────────────────────────┐
+│                      CLIENTE (Postman/curl)                 │
+└──────────────────┬──────────────────────────────────────────┘
+                   │ 1. Login (OAuth2 password grant)
+                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│              KEYCLOAK (Authorization Server)                │
+│                     Puerto 9000                             │
+│  - Realm: banco-xyz                                         │
+│  - Client: bff-client                                       │
+│  - Roles: ADMIN, USER                                       │
+└──────────────────┬──────────────────────────────────────────┘
+                   │ 2. Access Token (JWT)
+                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│              CLIENTE (guarda el token)                      │
+└──────────────────┬──────────────────────────────────────────┘
+                   │ 3. Request con Bearer Token
+                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│              MICROSERVICIOS (Resource Servers)              │
+│  ┌──────────────┐  ┌──────────────────┐  ┌───────────────┐  │
+│  │cuenta-service│  │transaccion-service│ │reporte-service│  │
+│  │   :8081      │  │      :8082        │ │   :8083       │  │
+│  └──────┬───────┘  └────────┬──────────┘  └───────┬───────┘  │
+│         │                   │                     │          │
+│         └───────────────────┴─────────────────────┘          │
+│                             │                                │
+│              Valida tokens JWT con JWKS de Keycloak          │
+└─────────────────────────────────────────────────────────────┘
+                   │
+                   │ Comunicación interna
+                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│  EUREKA (:8761) │ CONFIG SERVER (:8888) │ ACTIVEMQ (:61616) │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Tecnologías
+
+| Tecnología | Versión | Uso |
+|---|---|---|
+| **Java** | 17 | Lenguaje base |
+| **Spring Boot** | 3.3.4 | Framework principal |
+| **Spring Cloud** | 2023.0.3 | Config, Eureka, Circuit Breaker |
+| **Spring Security** | 6.3.3 | OAuth2 Resource Server |
+| **Keycloak** | 25.0.6 | Authorization Server OAuth2.0 |
+| **Spring Data JPA** | 3.3.4 | Persistencia |
+| **H2 Database** | 2.x | Base de datos en memoria |
+| **ActiveMQ** | Classic | Mensajería JMS |
+| **Resilience4j** | 2.1.0 | Circuit Breaker |
+| **Docker** | 29.2.1 | Contenedores |
+| **Docker Compose** | v2 | Orquestación |
+| **Maven** | 3.9 | Build |
+
+---
 
 ## Estructura del Proyecto
 
-```text
+```
 banco-xyz-microservicios/
-├── config-server/         # Configuración centralizada (8888)
-├── eureka-server/         # Service Discovery (8761)
-├── cuenta-service/        # Microservicio de cuentas (8081)
-├── transaccion-service/   # Microservicio de transacciones (8082)
-├── reporte-service/       # Microservicio de reportes (8083)
-├── shared-data/           # Datos CSV compartidos
-├── capturas/              # Evidencias de ejecución
-├── pom.xml                # POM padre (multi-módulo)
+├── config-server/                     # Spring Cloud Config Server
+│   ├── src/main/resources/
+│   │   ├── application.yml
+│   │   └── config/
+│   │       └── application.yml        # Config compartida (OAuth2, Eureka, JPA)
+│   └── Dockerfile
+├── eureka-server/                     # Service Discovery
+│   ├── src/main/resources/
+│   │   └── application.yml
+│   └── Dockerfile
+├── cuenta-service/                    # Microservicio de cuentas
+│   ├── src/main/java/com/bancoxyz/cuenta/
+│   │   ├── config/SecurityConfig.java # OAuth2 Resource Server
+│   │   ├── controller/CuentaController.java
+│   │   ├── exception/GlobalExceptionHandler.java
+│   │   ├── service/CuentaService.java
+│   │   └── ...
+│   ├── src/main/resources/application.yml
+│   └── Dockerfile
+├── transaccion-service/               # Microservicio de transacciones
+│   ├── src/main/java/com/bancoxyz/transaccion/
+│   │   ├── config/SecurityConfig.java
+│   │   ├── controller/TransaccionController.java
+│   │   └── ...
+│   └── Dockerfile
+├── reporte-service/                   # Microservicio de reportes
+│   ├── src/main/java/com/bancoxyz/reporte/
+│   │   ├── config/SecurityConfig.java
+│   │   ├── controller/ReporteController.java
+│   │   └── ...
+│   └── Dockerfile
+├── docker-compose.yaml                # Orquestación de servicios
+├── pom.xml                            # POM padre multi-módulo
 └── README.md
 ```
 
-## Tecnologías Utilizadas
+---
 
-| Tecnología | Versión | Propósito |
-|------------|---------|-----------|
-| Java | 17 | Lenguaje de programación |
-| Spring Boot | 3.3.4 | Framework principal |
-| Spring Cloud | 2023.0.3 | Ecosistema de microservicios |
-| Spring Security | 6.3.3 | Autenticación y autorización |
-| JJWT | 0.12.6 | Generación/validación JWT |
-| Resilience4j | 2.1.0 | Circuit Breaker |
-| Spring JMS | 6.1.13 | Mensajería asíncrona |
-| ActiveMQ | 6.x | Broker de mensajes |
-| Spring Data JPA | - | Acceso a datos |
-| H2 Database | - | Base de datos en memoria |
-| Lombok | - | Reducción de boilerplate |
-| Maven | 3.9+ | Gestión de dependencias |
-| Docker | - | Contenedor para ActiveMQ |
+## Prerequisitos
 
-## Componentes
+### Software Requerido
 
-### 1. Config Server (Puerto 8888)
+- **Java 17+** ([descargar](https://adoptium.net/))
+- **Maven 3.9+** ([descargar](https://maven.apache.org/))
+- **Docker Desktop** ([descargar](https://www.docker.com/products/docker-desktop))
 
-Servidor centralizado de configuración usando Spring Cloud Config con perfil `native`.
+### Servicios Externos Requeridos
 
-- **URL:** http://localhost:8888
-- **Endpoint de prueba:** http://localhost:8888/cuenta-service/default
+Estos servicios deben estar corriendo en Docker para que el sistema funcione:
 
-### 2. Eureka Server (Puerto 8761)
+#### Keycloak (puerto 9000)
 
-Servicio de descubrimiento y registro de microservicios.
-
-- **URL:** http://localhost:8761
-- **Consola:** http://localhost:8761
-
-### 3. ActiveMQ (Docker)
-
-Broker de mensajería JMS para la arquitectura de eventos.
-
-- **Puerto JMS:** 61616
-- **Puerto Consola Web:** 8161
-- **Usuario:** admin
-- **Contraseña:** admin
-- **URL Consola:** http://localhost:8161
-
-### 4. Microservicios
-
-| Microservicio | Puerto | Base de datos | Endpoints principales |
-|---------------|--------|---------------|----------------------|
-| cuenta-service | 8081 | H2 (cuenta_db) | `/api/cuentas` |
-| transaccion-service | 8082 | H2 (transaccion_db) | `/api/transacciones` |
-| reporte-service | 8083 | H2 (reporte_db) | `/api/reportes` |
-
-## Seguridad (JWT)
-
-### Usuarios disponibles
-
-| Usuario | Contraseña | Roles |
-|---------|------------|-------|
-| admin | admin123 | ADMIN, USER |
-| user | user123 | USER |
-
-### Endpoint de Login
-
-**POST** `/api/auth/login`
-
-```json
-{
-  "username": "admin",
-  "password": "admin123"
-}
+```bash
+docker run -d --name keycloak \
+  -p 9000:8080 \
+  -e KEYCLOAK_ADMIN=admin \
+  -e KEYCLOAK_ADMIN_PASSWORD=admin \
+  quay.io/keycloak/keycloak:25.0.6 start-dev
 ```
 
-**Respuesta:**
-
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiJ9...",
-  "username": "admin",
-  "rol": "ROLE_ADMIN",
-  "mensaje": "Autenticación exitosa"
-}
-```
-
-### Usar el token
-
-En Postman, agrega el header:
-
-```text
-Authorization: Bearer <token>
-```
-
-## Endpoints de los Microservicios
-
-### cuenta-service (8081)
-
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| POST | `/api/auth/login` | Login JWT |
-| GET | `/api/cuentas` | Lista de cuentas |
-| GET | `/api/cuentas/{cuentaId}` | Cuenta específica |
-| GET | `/api/cuentas/tipo/{tipo}` | Cuentas por tipo |
-
-### transaccion-service (8082)
-
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| POST | `/api/auth/login` | Login JWT |
-| GET | `/api/transacciones` | Lista de transacciones |
-| GET | `/api/transacciones/{id}` | Transacción específica |
-| GET | `/api/transacciones/cuenta/{cuentaId}` | Transacciones por cuenta |
-| POST | `/api/transacciones` | Crear transacción (publica evento JMS) |
-
-### reporte-service (8083)
-
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| POST | `/api/auth/login` | Login JWT |
-| GET | `/api/reportes` | Lista de reportes |
-| GET | `/api/reportes/{id}` | Reporte específico |
-| GET | `/api/reportes/cuenta/{cuentaId}` | Reportes por cuenta |
-| GET | `/api/reportes/cuenta/{cuentaId}/con-detalle` | Combina reportes + datos de cuenta (Circuit Breaker) |
-
-## Arquitectura de Eventos con JMS (ActiveMQ)
-
-El proyecto implementa una **arquitectura asíncrona de eventos** usando **JMS con ActiveMQ** para la comunicación entre microservicios.
-
-### Patrón de Mensajería
-
-Se utiliza el patrón **Publish/Subscribe (Topic)** para eventos de dominio.
-
-### Tópicos y Colas
-
-| # | Nombre | Tipo | Productor | Consumidores |
-|---|--------|------|-----------|--------------|
-| 1 | `transaccion.creada` | **Topic** | transaccion-service | cuenta-service, reporte-service |
-| 2 | `cuenta.saldo.actualizado` | **Topic** | cuenta-service | reporte-service |
-| 3 | `transaccion.anomalia` | **Queue** | transaccion-service | reporte-service |
-
-### Flujo de Eventos
-
-```text
-┌────────────────────────────────────────────────────────────────┐
-│                   Cliente → POST /api/transacciones            │
-└────────────────────────────┬───────────────────────────────────┘
-                             ▼
-┌────────────────────────────────────────────────────────────────┐
-│              transaccion-service (:8082)                       │
-│  • Guarda transacción en BD                                    │
-│  • Publica evento en Topic "transaccion.creada"                │
-└────────────────────────────┬───────────────────────────────────┘
-                             ▼ JMS
-┌────────────────────────────────────────────────────────────────┐
-│                 ActiveMQ Broker (:61616)                       │
-│  Topic: transaccion.creada                                     │
-└──────────────┬─────────────────────────────┬───────────────────┘
-               ▼                             ▼
-┌───────────────────────────┐    ┌───────────────────────────┐
-│  cuenta-service (:8081)   │    │  reporte-service (:8083)  │
-│  • Recibe evento          │    │  • Recibe evento          │
-│  • Actualiza saldo        │    │  • Registra en logs       │
-│  • Publica evento         │    │                           │
-│    "cuenta.saldo.actual." │    │  • Recibe también         │
-└─────────────┬─────────────┘    │    "cuenta.saldo.actual." │
-              ▼ JMS              └───────────────────────────┘
-┌───────────────────────────┐              ▲
-│  ActiveMQ Broker (:61616) │              │
-│  Topic: cuenta.saldo.act. │──────────────┘
-└───────────────────────────┘
-```
-
-### Configuración JMS en `application.yml`
-
-```yaml
-spring:
-  jms:
-    pub-sub-domain: true
-
-  activemq:
-    broker-url: tcp://localhost:61616
-    user: admin
-    password: admin
-    packages:
-      trust-all: true
-    pool:
-      enabled: true
-      max-connections: 10
-```
-
-### Mapeo de Tipos (TypeIdMappings)
-
-Como cada microservicio tiene su propia clase `TransaccionCreadaEvent`, se configuró `MappingJackson2MessageConverter` con `typeIdMappings` para deserializar correctamente:
-
-```java
-Map<String, Class<?>> typeIdMappings = new HashMap<>();
-typeIdMappings.put(
-        "com.bancoxyz.transaccion.event.TransaccionCreadaEvent",
-        com.bancoxyz.cuenta.event.TransaccionCreadaEvent.class
-);
-converter.setTypeIdMappings(typeIdMappings);
-```
-
-### Productor (transaccion-service)
-
-```java
-public void publicarTransaccionCreada(TransaccionCreadaEvent evento) {
-    jmsTemplate.setPubSubDomain(true);
-    jmsTemplate.convertAndSend(JmsConfig.TOPIC_TRANSACCION_CREADA, evento);
-}
-```
-
-### Consumidor (cuenta-service)
-
-```java
-@JmsListener(destination = JmsConfig.TOPIC_TRANSACCION_CREADA)
-public void onTransaccionCreada(TransaccionCreadaEvent evento) {
-    // Actualizar saldo de la cuenta
-    // Publicar evento "cuenta.saldo.actualizado"
-}
-```
-
-### Consumidor (reporte-service)
-
-```java
-@JmsListener(destination = JmsConfig.TOPIC_TRANSACCION_CREADA)
-public void onTransaccionCreada(TransaccionCreadaEvent evento) { ... }
-
-@JmsListener(destination = JmsConfig.TOPIC_CUENTA_ACTUALIZADA)
-public void onCuentaActualizada(CuentaActualizadaEvent evento) { ... }
-```
-
-### Iniciar ActiveMQ con Docker
+#### ActiveMQ (puertos 61616 y 8161)
 
 ```bash
 docker run -d --name activemq \
   -p 61616:61616 \
   -p 8161:8161 \
+  -e ACTIVEMQ_ADMIN_LOGIN=admin \
+  -e ACTIVEMQ_ADMIN_PASSWORD=admin \
   apache/activemq-classic:latest
 ```
 
-### Verificar en ActiveMQ
+---
 
-1. Abrir `http://localhost:8161`
-2. Usuario: `admin` / Contraseña: `admin`
-3. Ir a **Topics**
-4. Verificar los tópicos con sus consumidores
+## Instalación y Ejecución
 
-## Circuit Breaker (Resilience4j)
+### Opción 1: Con Docker Compose (Recomendado)
 
-El `reporte-service` implementa Circuit Breaker para llamar al `cuenta-service`:
+#### 1. Clonar el repositorio
+
+```bash
+git clone https://github.com/tu-usuario/banco-xyz-microservicios.git
+cd banco-xyz-microservicios
+```
+
+#### 2. Levantar Keycloak y ActiveMQ
+
+```bash
+docker start keycloak activemq
+```
+
+#### 3. Construir las imágenes de los microservicios
+
+```bash
+docker build -t banco-xyz/config-server:1.0.0 -f config-server/Dockerfile .
+docker build -t banco-xyz/eureka-server:1.0.0 -f eureka-server/Dockerfile .
+docker build -t banco-xyz/cuenta-service:1.0.0 -f cuenta-service/Dockerfile .
+docker build -t banco-xyz/transaccion-service:1.0.0 -f transaccion-service/Dockerfile .
+docker build -t banco-xyz/reporte-service:1.0.0 -f reporte-service/Dockerfile .
+```
+
+#### 4. Levantar todos los servicios
+
+```bash
+docker compose up -d --force-recreate
+```
+
+#### 5. Verificar que todos los servicios estén corriendo
+
+```bash
+docker compose ps
+```
+
+**Salida esperada:**
+```
+NAME                  IMAGE                                 STATUS
+config-server         banco-xyz/config-server:1.0.0         Up
+cuenta-service        banco-xyz/cuenta-service:1.0.0        Up
+eureka-server         banco-xyz/eureka-server:1.0.0         Up
+reporte-service       banco-xyz/reporte-service:1.0.0       Up
+transaccion-service   banco-xyz/transaccion-service:1.0.0   Up
+```
+
+---
+
+### Opción 2: Ejecución Local (Desarrollo)
+
+```bash
+# Terminal 1 - Config Server
+cd config-server && mvn spring-boot:run
+
+# Terminal 2 - Eureka Server
+cd eureka-server && mvn spring-boot:run
+
+# Terminal 3 - cuenta-service
+cd cuenta-service && mvn spring-boot:run
+
+# Terminal 4 - transaccion-service
+cd transaccion-service && mvn spring-boot:run
+
+# Terminal 5 - reporte-service
+cd reporte-service && mvn spring-boot:run
+```
+
+---
+
+## Configuración de OAuth2 con Keycloak
+
+### Paso 1: Crear el Realm `banco-xyz`
+
+1. Acceder a http://localhost:9000
+2. Login con `admin` / `admin`
+3. Crear realm `banco-xyz`
+
+### Paso 2: Crear el Client `bff-client`
+
+| Campo | Valor |
+|---|---|
+| Client ID | `bff-client` |
+| Client authentication | ON |
+| Authorization | ON |
+| Standard flow | ON |
+| Direct access grants | ON |
+| Valid redirect URIs | `*` |
+| Web origins | `*` |
+
+**Client Secret:** (copiar y guardar)
+
+### Paso 3: Crear Roles
+
+| Rol | Descripción |
+|---|---|
+| `ADMIN` | Administrador del sistema |
+| `USER` | Usuario estándar |
+
+### Paso 4: Crear Usuarios
+
+| Username | Password | Rol |
+|---|---|---|
+| `admin` | `admin123` | `ADMIN` |
+| `user` | `user123` | `USER` |
+
+**Nota:** Desactivar `Temporary` al asignar la contraseña.
+
+---
+
+## API Endpoints
+
+### Cuenta Service (Puerto 8081)
+
+| Método | Endpoint | Rol Requerido |
+|---|---|---|
+| GET | `/api/cuentas/` | Público |
+| GET | `/api/cuentas` | USER / ADMIN |
+| GET | `/api/cuentas/{cuentaId}` | USER / ADMIN |
+| GET | `/api/cuentas/tipo/{tipo}` | USER / ADMIN |
+| POST | `/api/cuentas` | **ADMIN** |
+
+### Transaccion Service (Puerto 8082)
+
+| Método | Endpoint | Rol Requerido |
+|---|---|---|
+| GET | `/api/transacciones/` | Público |
+| GET | `/api/transacciones` | USER / ADMIN |
+| GET | `/api/transacciones/{id}` | USER / ADMIN |
+| GET | `/api/transacciones/cuenta/{cuentaId}` | USER / ADMIN |
+| GET | `/api/transacciones/anomalias` | USER / ADMIN |
+| POST | `/api/transacciones` | USER / ADMIN |
+
+### Reporte Service (Puerto 8083)
+
+| Método | Endpoint | Rol Requerido |
+|---|---|---|
+| GET | `/api/reportes/` | Público |
+| GET | `/api/reportes` | USER / ADMIN |
+| GET | `/api/reportes/{id}` | USER / ADMIN |
+| GET | `/api/reportes/cuenta/{cuentaId}` | USER / ADMIN |
+| GET | `/api/reportes/cuenta/{cuentaId}/con-detalle` | USER / ADMIN |
+| POST | `/api/reportes` | USER / ADMIN |
+
+---
+
+## Pruebas de Seguridad
+
+### 1. Obtener Token de Keycloak (ADMIN)
+
+```bash
+curl -X POST "http://localhost:9000/realms/banco-xyz/protocol/openid-connect/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id=bff-client" \
+  -d "client_secret=TU_CLIENT_SECRET" \
+  -d "username=admin" \
+  -d "password=admin123" \
+  -d "grant_type=password"
+```
+
+### 2. Listar Cuentas con Token
+
+```bash
+curl -H "Authorization: Bearer TU_ACCESS_TOKEN" \
+  http://localhost:8081/api/cuentas
+```
+
+### 3. Crear Cuenta con ADMIN (201 Created)
+
+```bash
+curl -X POST http://localhost:8081/api/cuentas \
+  -H "Authorization: Bearer TU_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"cuentaId":"TEST001","nombre":"Cuenta Test","saldo":1000,"edad":30,"tipo":"ahorro"}'
+```
+
+### 4. Intentar Crear Cuenta con USER (403 Forbidden)
+
+```bash
+curl -X POST http://localhost:8081/api/cuentas \
+  -H "Authorization: Bearer TOKEN_USER" \
+  -H "Content-Type: application/json" \
+  -d '{"cuentaId":"TEST002","nombre":"Otra","saldo":100,"edad":25,"tipo":"ahorro"}'
+```
+
+**Resultado esperado:** `HTTP/1.1 403 Forbidden`
+
+---
+
+## Tolerancia a Fallos (Resilience4j)
+
+El microservicio `reporte-service` implementa **Circuit Breaker** con Resilience4j para llamadas a `cuenta-service`.
 
 ### Configuración
 
@@ -331,152 +380,78 @@ resilience4j:
         minimumNumberOfCalls: 5
         failureRateThreshold: 50
         waitDurationInOpenState: 5s
+  timelimiter:
+    instances:
+      cuentaService:
+        timeoutDuration: 3s
 ```
 
-### Endpoint con Circuit Breaker
+### Estados del Circuit Breaker
 
-**GET** `/api/reportes/cuenta/{cuentaId}/con-detalle`
+- **CLOSED:** Todo funciona normal
+- **OPEN:** Se superó el umbral de fallos → bloquea llamadas temporalmente
+- **HALF_OPEN:** Prueba con algunas llamadas para ver si el servicio se recuperó
 
-**Con cuenta-service arriba (éxito):**
+---
 
-```json
-{
-  "cuentaId": "101",
-  "reportes": [...],
-  "cuenta": {
-    "cuentaId": "101",
-    "nombre": "John Doe",
-    "saldo": 5000.00
-  },
-  "fuente": "real"
-}
-```
+## Mensajería Asíncrona (JMS)
 
-**Con cuenta-service caído (fallback):**
+Se utiliza **ActiveMQ** para comunicación asíncrona entre microservicios.
 
-```json
-{
-  "cuentaId": "101",
-  "reportes": [...],
-  "cuenta": null,
-  "fuente": "fallback"
-}
-```
+### Colas/Topics
 
-### Monitoreo (Actuator)
+| Nombre | Uso |
+|---|---|
+| `transaccion.creada` | Cuando se crea una transacción |
+| `cuenta.actualizada` | Cuando se actualiza una cuenta |
 
-**GET** `http://localhost:8083/actuator/circuitbreakers`
+### Consola de ActiveMQ
 
-```json
-{
-  "circuitBreakers": {
-    "cuentaService": {
-      "failureRate": "50.0%",
-      "bufferedCalls": 5,
-      "failedCalls": 3,
-      "state": "CLOSED"
-    }
-  }
-}
-```
+- **URL:** http://localhost:8161
+- **Usuario:** `admin`
+- **Contraseña:** `admin`
 
-## Instalación y Ejecución
+---
 
-### Requisitos previos
+## Evidencias de Ejecución
 
-- Java 17 o superior
-- Maven 3.6 o superior
-- Docker Desktop (para ActiveMQ)
+Las capturas de las pruebas se encuentran en la carpeta `/capturas`:
 
-### Orden de arranque
+| Captura | Descripción |
+|---|---|
+| `captura-s8-keycloak-roles.png` | Roles ADMIN y USER en Keycloak |
+| `captura-s8-keycloak-users.png` | Usuarios admin y user |
+| `captura-s8-token-admin.png` | Token obtenido vía curl |
+| `captura-s8-cuenta-local-200.png` | OAuth2 funcionando (local) |
+| `captura-s8-docker-compose-ps.png` | Los 5 servicios Docker corriendo |
+| `captura-s8-docker-cuenta-con-token-200.png` | **OAuth2 funcionando en Docker (200 OK)** |
+| `captura-s8-docker-cuenta-201-admin.png` | **Crear cuenta con ADMIN (201)** |
+| `captura-s8-docker-cuenta-403-user.png` | **USER bloqueado (403)** |
 
-**IMPORTANTE:** Los servicios deben arrancarse en este orden:
+---
 
-```bash
-# 1. ActiveMQ (Docker) - PRIMERO
-docker run -d --name activemq \
-  -p 61616:61616 \
-  -p 8161:8161 \
-  apache/activemq-classic:latest
+## Limitaciones Conocidas
 
-# 2. Config Server (8888)
-cd config-server
-mvn spring-boot:run
+### Docker Desktop en Windows y Keycloak
 
-# 3. Eureka Server (8761)
-cd eureka-server
-mvn spring-boot:run
+En **Docker Desktop para Windows**, los contenedores no pueden resolver `localhost` como la máquina host. Se utiliza `host.docker.internal` para la comunicación.
 
-# 4. Cuenta Service (8081)
-cd cuenta-service
-mvn spring-boot:run
+**Configuración aplicada:**
 
-# 5. Transaccion Service (8082)
-cd transaccion-service
-mvn spring-boot:run
+- **Micros → Keycloak:** `http://host.docker.internal:9000/realms/banco-xyz`
+- **Micros → ActiveMQ:** `tcp://host.docker.internal:61616`
+- **Micros → Config Server:** `http://config-server:8888` (DNS interno de Docker)
+- **Micros → Eureka:** `http://eureka-server:8761/eureka/` (DNS interno de Docker)
 
-# 6. Reporte Service (8083)
-cd reporte-service
-mvn spring-boot:run
-```
+---
 
-### Verificación del funcionamiento
+## Autor
 
-- **ActiveMQ Console:** http://localhost:8161 (admin/admin)
-![alt text](image-2.png)
 
-- **Config Server:** http://localhost:8888/cuenta-service/default
+**Carolina Solis** - [carosolis45](https://github.com/carosolis45)
 
-- **Eureka Dashboard:** http://localhost:8761 ( con los 3 microservicios)
-![alt text](image-1.png)
-
-- **Login JWT:** http://localhost:8081/api/auth/login
-
-- **Circuit Breaker:** http://localhost:8083/actuator/circuitbreakers
-
-## Pruebas Rápidas con cURL
-
-```bash
-# 1. Login
-curl -X POST http://localhost:8081/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}'
-
-# 2. Usar el token obtenido
-curl http://localhost:8081/api/cuentas \
-  -H "Authorization: Bearer <TOKEN>"
-
-# 3. Circuit Breaker
-curl http://localhost:8083/api/reportes/cuenta/101/con-detalle \
-  -H "Authorization: Bearer <TOKEN>"
-
-# 4. Crear transacción (dispara el flujo JMS)
-curl -X POST http://localhost:8082/api/transacciones \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <TOKEN>" \
-  -d '{"cuentaId":"101","fecha":"2024-02-15","monto":888.00,"tipo":"credito","descripcion":"Prueba JMS","anomalia":false}'
-```
-
-## Evidencias
-
-Las capturas de ejecución están en la carpeta `capturas/`:
-
-- ActiveMQ Console funcionando
-- Config Server funcionando
-- Eureka Server con 3 microservicios registrados
-- Endpoints de cada microservicio
-- Login JWT exitoso
-- Acceso SIN/CON token
-- Circuit Breaker en modo real y fallback
-- Actuator con estado del Circuit Breaker
-- **Topics de ActiveMQ con consumidores suscritos**
-- **Log del productor (transaccion-service) publicando evento**
-- **Log del consumidor (cuenta-service) recibiendo evento**
-- **Log del consumidor (reporte-service) recibiendo eventos**
-
-## Autores
-
-- **Carolina Solis** - [carosolis45](https://github.com/carosolis45)
+- Curso: Desarrollo de Microservicios con Spring Cloud
+- Semana 8: OAuth2.0 + Docker + Docker Compose
 
 ## Repositorio
 

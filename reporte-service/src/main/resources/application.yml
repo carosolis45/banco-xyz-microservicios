@@ -6,13 +6,13 @@ spring:
     name: reporte-service
 
   config:
-    import: optional:configserver:http://localhost:8888
+    import: optional:configserver:http://config-server:8888
 
   jms:
     pub-sub-domain: true
 
   activemq:
-    broker-url: tcp://localhost:61616
+    broker-url: tcp://host.docker.internal:61616
     user: admin
     password: admin
     packages:
@@ -47,7 +47,7 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://eureka-server:8761/eureka/
   instance:
     prefer-ip-address: true
 
@@ -78,10 +78,6 @@ management:
   health:
     circuitbreakers:
       enabled: true
-
-jwt:
-  secret: banco-xyz-clave-super-secreta-para-firmar-tokens-jwt-2026
-  expiration: 36000000
 
 logging:
   level:

@@ -1,0 +1,96 @@
+# ============================================================
+# docker-compose.yaml - Banco XYZ Microservicios
+# ============================================================
+services:
+  # ============================================
+  # SPRING CLOUD INFRASTRUCTURE
+  # ============================================
+  config-server:
+    image: banco-xyz/config-server:1.0.0
+    container_name: config-server
+    ports:
+      - "8888:8888"
+    networks:
+      - banco-xyz-net
+    restart: unless-stopped
+
+  eureka-server:
+    image: banco-xyz/eureka-server:1.0.0
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    depends_on:
+      - config-server
+    networks:
+      - banco-xyz-net
+    restart: unless-stopped
+
+  # ============================================
+  # MICROSERVICIOS
+  # ============================================
+  cuenta-service:
+    image: banco-xyz/cuenta-service:1.0.0
+    container_name: cuenta-service
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888"
+      SPRING_CLOUD_CONFIG_URI: "http://config-server:8888"
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: "http://eureka-server:8761/eureka/"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: "http://host.docker.internal:9000/realms/banco-xyz"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: "http://host.docker.internal:9000/realms/banco-xyz/protocol/openid-connect/certs"
+      SPRING_ACTIVEMQ_BROKER_URL: "tcp://host.docker.internal:61616"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - config-server
+      - eureka-server
+    networks:
+      - banco-xyz-net
+    restart: unless-stopped
+
+  transaccion-service:
+    image: banco-xyz/transaccion-service:1.0.0
+    container_name: transaccion-service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888"
+      SPRING_CLOUD_CONFIG_URI: "http://config-server:8888"
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: "http://eureka-server:8761/eureka/"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: "http://host.docker.internal:9000/realms/banco-xyz"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: "http://host.docker.internal:9000/realms/banco-xyz/protocol/openid-connect/certs"
+      SPRING_ACTIVEMQ_BROKER_URL: "tcp://host.docker.internal:61616"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - config-server
+      - eureka-server
+    networks:
+      - banco-xyz-net
+    restart: unless-stopped
+
+  reporte-service:
+    image: banco-xyz/reporte-service:1.0.0
+    container_name: reporte-service
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888"
+      SPRING_CLOUD_CONFIG_URI: "http://config-server:8888"
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: "http://eureka-server:8761/eureka/"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: "http://host.docker.internal:9000/realms/banco-xyz"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: "http://host.docker.internal:9000/realms/banco-xyz/protocol/openid-connect/certs"
+      SPRING_ACTIVEMQ_BROKER_URL: "tcp://host.docker.internal:61616"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - config-server
+      - eureka-server
+    networks:
+      - banco-xyz-net
+    restart: unless-stopped
+
+networks:
+  banco-xyz-net:
+    driver: bridge
