@@ -1,0 +1,8 @@
+clienteId,nombre,email,telefono,direccion,edad,tipoCliente
+CLI001,John Doe,john.doe@email.com,+56912345678,Av. Providencia 123,30,PREMIUM
+CLI002,Jane Smith,jane.smith@email.com,+56923456789,Av. Las Condes 456,25,REGULAR
+CLI003,Bob Johnson,bob.johnson@email.com,+56934567890,Av. Vitacura 789,30,NUEVO
+CLI004,Alice Brown,alice.brown@email.com,+56945678901,Av. Apoquindo 101,45,PREMIUM
+CLI005,Charlie Green,charlie.green@email.com,+56956789012,Av. Kennedy 202,35,REGULAR
+CLI006,Diana Prince,diana.prince@email.com,+56967890123,Av. Italia 303,40,PREMIUM
+CLI007,Steve Rogers,steve.rogers@email.com,+56978901234,Av. Brasil 404,80,REGULAR

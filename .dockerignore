@@ -1,0 +1,8 @@
+**/target/
+**/.git/
+**/*.log
+**/capturas/
+**/.idea/
+**/.vscode/
+**/node_modules/
+*.md

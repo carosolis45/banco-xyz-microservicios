@@ -91,6 +91,89 @@ services:
       - banco-xyz-net
     restart: unless-stopped
 
+  clientes-service:
+    image: banco-xyz/clientes-service:1.0.0
+    container_name: clientes-service
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888"
+      SPRING_CLOUD_CONFIG_URI: "http://config-server:8888"
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: "http://eureka-server:8761/eureka/"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: "http://host.docker.internal:9000/realms/banco-xyz"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: "http://host.docker.internal:9000/realms/banco-xyz/protocol/openid-connect/certs"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - config-server
+      - eureka-server
+    networks:
+      - banco-xyz-net
+    restart: unless-stopped
+
+  # ============================================
+  # BFFs - BACKEND FOR FRONTEND
+  # ============================================
+  bff-web:
+    image: banco-xyz/bff-web:1.0.0
+    container_name: bff-web
+    ports:
+      - "8091:8091"
+    environment:
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888"
+      SPRING_CLOUD_CONFIG_URI: "http://config-server:8888"
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: "http://eureka-server:8761/eureka/"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: "http://host.docker.internal:9000/realms/banco-xyz"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: "http://host.docker.internal:9000/realms/banco-xyz/protocol/openid-connect/certs"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - config-server
+      - eureka-server
+    networks:
+      - banco-xyz-net
+    restart: unless-stopped
+
+  bff-movil:
+    image: banco-xyz/bff-movil:1.0.0
+    container_name: bff-movil
+    ports:
+      - "8092:8092"
+    environment:
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888"
+      SPRING_CLOUD_CONFIG_URI: "http://config-server:8888"
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: "http://eureka-server:8761/eureka/"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: "http://host.docker.internal:9000/realms/banco-xyz"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: "http://host.docker.internal:9000/realms/banco-xyz/protocol/openid-connect/certs"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - config-server
+      - eureka-server
+    networks:
+      - banco-xyz-net
+    restart: unless-stopped
+
+  bff-cajeros:
+    image: banco-xyz/bff-cajeros:1.0.0
+    container_name: bff-cajeros
+    ports:
+      - "8093:8093"
+    environment:
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888"
+      SPRING_CLOUD_CONFIG_URI: "http://config-server:8888"
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: "http://eureka-server:8761/eureka/"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: "http://host.docker.internal:9000/realms/banco-xyz"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: "http://host.docker.internal:9000/realms/banco-xyz/protocol/openid-connect/certs"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - config-server
+      - eureka-server
+    networks:
+      - banco-xyz-net
+    restart: unless-stopped
+
 networks:
   banco-xyz-net:
     driver: bridge

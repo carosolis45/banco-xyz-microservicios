@@ -1,0 +1,33 @@
+server:
+  port: 8092
+
+spring:
+  application:
+    name: bff-movil
+
+  config:
+    import: optional:configserver:http://config-server:8888
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://host.docker.internal:9000/realms/banco-xyz
+          jwk-set-uri: http://host.docker.internal:9000/realms/banco-xyz/protocol/openid-connect/certs
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    com.bancoxyz: DEBUG

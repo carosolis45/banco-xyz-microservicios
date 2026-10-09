@@ -30,6 +30,11 @@
         <module>cuenta-service</module>
         <module>transaccion-service</module>
         <module>reporte-service</module>
+        <module>batch-service</module>
+        <module>clientes-service</module>
+        <module>bff-web</module>
+        <module>bff-movil</module>
+        <module>bff-cajeros</module>
     </modules>
 
     <dependencyManagement>
