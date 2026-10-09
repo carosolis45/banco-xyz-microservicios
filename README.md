@@ -53,7 +53,7 @@ Sistema compuesto por 7 microservicios + 3 BFF + 2 servicios de infraestructura:
 
 ## Estructura del proyecto
 
-text
+```
 banco-xyz-microservicios/
 ├── config-server/
 ├── eureka-server/
@@ -70,8 +70,7 @@ banco-xyz-microservicios/
 ├── despliegue.md
 ├── README.md
 └── pom.xml
-
-text
+```
 
 ## Prerequisitos
 
